@@ -111,7 +111,8 @@ def write_tokenizer(out: pathlib.Path, model: pathlib.Path):
 
 def check_k_map(model: pathlib.Path, st: SafeTensors) -> int | None:
     """exl3_k_map.json (if the repo has one) against every EXL3 matrix: its K (the trellis's last dim / 16) and the
-    codebook; a mismatch stops the pack.  -> the matrices checked, None without a map."""
+    codebook; a codebook mismatch stops the pack, a K mismatch is reported (the engine reads each matrix's K from its
+    shape, and the map cannot express a release's per-tensor exceptions).  -> the matrices checked, None without a map."""
     path = model / "exl3_k_map.json"
     if not path.exists():
         return None
@@ -150,7 +151,9 @@ def check_k_map(model: pathlib.Path, st: SafeTensors) -> int | None:
         if shape[-1] // 16 != int(w):
             bad.append("%s: K %d, the map %d" % (name, shape[-1] // 16, int(w)))
     if bad:
-        raise SystemExit("%s disagrees with the tensors:\n  %s" % (path, "\n  ".join(bad[:20])))
+        print("%s: %d matrices differ from the map's K (the engine reads each K from its trellis shape, and the map "
+              "cannot express a release's per-tensor exceptions, e.g. this one's 6-bit layer-0 attention and 6-bit "
+              "MTP dense blocks):\n  %s" % (path, len(bad), "\n  ".join(bad[:20])), file=sys.stderr)
     return n
 
 

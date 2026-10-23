@@ -5,6 +5,8 @@ directory's only for a repo without one), and the K map is checked against every
 """
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import pathlib
 import sys
@@ -73,10 +75,12 @@ class KMap(unittest.TestCase):
     def test_no_map(self):
         self.assertIsNone(self.check(None, TENSORS))
 
-    def test_a_wrong_k_stops(self):
-        with self.assertRaises(SystemExit) as e:
-            self.check(K_MAP, {**TENSORS, "layers.1.ffn.experts.0.w2.trellis": 4})
-        self.assertIn("layers.1.ffn.experts.0.w2.trellis: K 4, the map 3", str(e.exception))
+    def test_a_wrong_k_is_reported(self):
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            n = self.check(K_MAP, {**TENSORS, "layers.1.ffn.experts.0.w2.trellis": 4})
+        self.assertEqual(n, len(TENSORS))
+        self.assertIn("layers.1.ffn.experts.0.w2.trellis: K 4, the map 3", err.getvalue())
 
     def test_another_codebook_stops(self):
         with self.assertRaises(SystemExit):
